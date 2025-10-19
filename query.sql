@@ -1,0 +1,1 @@
+SELECT id, name, email, walletAddress, walletType FROM Business;

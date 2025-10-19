@@ -1,0 +1,21 @@
+﻿TOTAL_PATHS:76
+test - <no-title>
+AE - United Arab Emirates
+AO - Angola
+BF - Burkina Faso
+BH - Bahrain
+BI - Burundi
+BJ - Benin
+BW - Botswana
+CD - Democratic Republic of Congo
+CF - Central African Republic
+CG - Republic of Congo
+CI - CÃ´te d'Ivoire
+CM - Cameroon
+CV - Cape Verde
+DJ - Djibouti
+DZ - Algeria
+EG - Egypt
+EH - Western Sahara
+ER - Eritrea
+ET - Ethiopia

@@ -1,0 +1,679 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Business Entity Models
+model Business {
+  id                String   @id @default(cuid())
+  
+  // Basic Information
+  name              String
+  email             String   @unique
+  phone             String
+  website           String?
+  description       String?
+  
+  // Address Information
+  address           String
+  city              String
+  state             String
+  country           String   @default("Nigeria")
+  postalCode        String?
+  
+  // Business Details
+  registrationNumber String? @unique
+  taxId             String?
+  businessType      BusinessType
+  industry          Industry
+  foundedYear       Int?
+  employeeCount     EmployeeRange?
+  annualRevenue     RevenueRange?
+  
+  // Verification & Status
+  isVerified        Boolean  @default(false)
+  verificationLevel VerificationLevel @default(BASIC)
+  status            BusinessStatus @default(PENDING)
+  
+  // Wallet Information
+  walletAddress     String?
+  walletType        WalletType?
+  
+  // Metadata
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  lastActiveAt      DateTime @default(now())
+  
+  // Relations
+  users             BusinessUser[]
+  auctions          Auction[]
+  bids              Bid[]
+  transactions      Transaction[]
+  documents         BusinessDocument[]
+  reviews           BusinessReview[]
+  subscriptions     Subscription[]
+  nftCollections    NFTCollection[]
+  nftAssets         NFTAsset[]
+  registeredUsers   User[]
+  marketplaceListings MarketplaceListing[]
+  
+  @@map("businesses")
+}
+
+model BusinessUser {
+  id          String   @id @default(cuid())
+  
+  // Personal Information
+  firstName   String
+  lastName    String
+  email       String   @unique
+  phone       String?
+  
+  // Authentication
+  passwordHash String?
+  emailVerified Boolean @default(false)
+  phoneVerified Boolean @default(false)
+  
+  // Role & Permissions
+  role        UserRole @default(MEMBER)
+  permissions Json?
+  
+  // Business Association
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  // Status
+  isActive    Boolean  @default(true)
+  lastLoginAt DateTime?
+  
+  // Metadata
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  auctions    Auction[]
+  bids        Bid[]
+  transactions Transaction[]
+  
+  @@map("business_users")
+}
+
+model BusinessDocument {
+  id          String   @id @default(cuid())
+  
+  // Document Information
+  name        String
+  type        DocumentType
+  description String?
+  fileUrl     String
+  fileSize    Int
+  mimeType    String
+  originalName String // Original filename when uploaded
+  category    String? // Additional categorization (e.g., "registration", "certification")
+  
+  // File validation
+  isValidFormat Boolean @default(true) // Whether the file format is acceptable
+  virusScanStatus VirusScanStatus @default(PENDING)
+  
+  // Verification
+  isVerified  Boolean  @default(false)
+  verifiedAt  DateTime?
+  verifiedBy  String?
+  rejectionReason String? // If document is rejected, store reason
+  
+  // Business Association
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  // Upload metadata
+  uploadedBy  String? // User ID who uploaded the document
+  ipAddress   String? // IP address for security audit
+  userAgent   String? // Browser info for audit trail
+  
+  // Metadata
+  uploadedAt  DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("business_documents")
+}
+
+model Auction {
+  id              String   @id @default(cuid())
+  
+  // Auction Details
+  title           String
+  description     String
+  category        AuctionCategory
+  commodityType   String
+  quantity        Float
+  unit            String
+  quality         String?
+  location        String
+  certifications  String?
+  
+  // Pricing
+  reservePrice    Float?
+  currentBid      Float    @default(0)
+  currency        String   @default("HBAR")
+  
+  // Timing
+  startTime       DateTime
+  endTime         DateTime
+  
+  // NFT Information
+  tokenId         String?
+  nftContract     String?
+  metadataUri     String?
+  seller          String?   // Wallet address of the seller
+  
+  // Status
+  status          AuctionStatus @default(PENDING)
+  isSettled       Boolean  @default(false)
+  winnerId        String?
+  
+  // NFT Allowance (for operator to transfer NFT when auction completes)
+  allowanceGranted       Boolean  @default(false)
+  allowanceTransactionId String?
+  
+  // Fees
+  feeBps          Int      @default(250) // 2.5% default fee
+  
+  // Business Association
+  businessId      String
+  business        Business @relation(fields: [businessId], references: [id])
+  createdById     String
+  createdBy       BusinessUser @relation(fields: [createdById], references: [id])
+  
+  // Metadata
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  bids            Bid[]
+  transactions    Transaction[]
+  nftAssets       NFTAsset[]
+  
+  @@map("auctions")
+}
+
+model Bid {
+  id          String   @id @default(cuid())
+  
+  // Bid Information
+  amount      Float
+  amountHbar  Float?                  // HBAR amount for blockchain bids
+  currency    String   @default("HBAR")
+  txHash      String?
+  
+  // Auction Association
+  auctionId   String
+  auction     Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  
+  // Bidder Information
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id])
+  bidderId    String
+  bidder      BusinessUser @relation(fields: [bidderId], references: [id])
+  bidderWalletAddress String?           // Hedera wallet address of bidder
+  
+  // Status
+  isWinning   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  
+  // Metadata
+  createdAt   DateTime @default(now())
+  
+  @@map("bids")
+}
+
+model Transaction {
+  id              String   @id @default(cuid())
+  
+  // Transaction Details
+  type            TransactionType
+  amount          Float
+  currency        String   @default("HBAR")
+  status          TransactionStatus @default(PENDING)
+  
+  // Blockchain Information
+  txHash          String?
+  blockNumber     Int?
+  gasUsed         String?
+  gasPrice        String?
+  
+  // Business Association
+  businessId      String
+  business        Business @relation(fields: [businessId], references: [id])
+  userId          String
+  user            BusinessUser @relation(fields: [userId], references: [id])
+  
+  // Auction Association (optional)
+  auctionId       String?
+  auction         Auction? @relation(fields: [auctionId], references: [id])
+  
+  // Metadata
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("transactions")
+}
+
+model BusinessReview {
+  id          String   @id @default(cuid())
+  
+  // Review Details
+  rating      Int      // 1-5 stars
+  title       String?
+  comment     String?
+  
+  // Business Association
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  // Reviewer Information (can be anonymous)
+  reviewerName String?
+  reviewerEmail String?
+  
+  // Status
+  isVerified  Boolean  @default(false)
+  isPublic    Boolean  @default(true)
+  
+  // Metadata
+  createdAt   DateTime @default(now())
+  
+  @@map("business_reviews")
+}
+
+model Subscription {
+  id              String   @id @default(cuid())
+  
+  // Subscription Details
+  plan            SubscriptionPlan
+  status          SubscriptionStatus @default(ACTIVE)
+  
+  // Billing
+  pricePerMonth   Float
+  billingCycle    BillingCycle @default(MONTHLY)
+  
+  // Dates
+  startDate       DateTime @default(now())
+  endDate         DateTime?
+  cancelledAt     DateTime?
+  
+  // Business Association
+  businessId      String
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  // Metadata
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("subscriptions")
+}
+
+// Enums
+enum BusinessType {
+  SOLE_PROPRIETORSHIP
+  PARTNERSHIP
+  LIMITED_LIABILITY
+  CORPORATION
+  COOPERATIVE
+  NON_PROFIT
+}
+
+enum Industry {
+  AGRICULTURE
+  MINING
+  MANUFACTURING
+  ENERGY
+  TECHNOLOGY
+  HEALTHCARE
+  FINANCE
+  REAL_ESTATE
+  TRANSPORTATION
+  RETAIL
+  SERVICES
+  OTHER
+}
+
+enum EmployeeRange {
+  MICRO_1_10
+  SMALL_11_50
+  MEDIUM_51_200
+  LARGE_201_1000
+  ENTERPRISE_1000_PLUS
+}
+
+enum RevenueRange {
+  STARTUP_0_100K
+  SMALL_100K_1M
+  MEDIUM_1M_10M
+  LARGE_10M_100M
+  ENTERPRISE_100M_PLUS
+}
+
+enum VerificationLevel {
+  BASIC
+  STANDARD
+  PREMIUM
+  ENTERPRISE
+}
+
+enum BusinessStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+  BLACKLISTED
+}
+
+enum WalletType {
+  METAMASK
+  HASHCONNECT
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  MANAGER
+  MEMBER
+}
+
+enum DocumentType {
+  BUSINESS_REGISTRATION
+  TAX_CERTIFICATE
+  BANK_STATEMENT
+  IDENTITY_DOCUMENT
+  ADDRESS_PROOF
+  CERTIFICATION
+  INSURANCE
+  OTHER
+}
+
+enum VirusScanStatus {
+  PENDING
+  CLEAN
+  INFECTED
+  FAILED
+  SKIPPED
+}
+
+enum AuctionCategory {
+  AGRICULTURAL
+  MINING
+  INDUSTRIAL
+  ENERGY
+  TECHNOLOGY
+  REAL_ESTATE
+  SERVICES
+  OTHER
+}
+
+enum AuctionStatus {
+  PENDING
+  ACTIVE
+  ENDED
+  CANCELLED
+  SETTLED
+}
+
+enum TransactionType {
+  BID
+  AUCTION_SETTLEMENT
+  PAYMENT
+  REFUND
+  FEE
+  WITHDRAWAL
+}
+
+enum TransactionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum SubscriptionPlan {
+  BASIC
+  PROFESSIONAL
+  ENTERPRISE
+  CUSTOM
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+  SUSPENDED
+}
+
+enum BillingCycle {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum AssetCategory {
+  AGRICULTURAL
+  MINING
+  INDUSTRIAL
+  ENERGY
+  TECHNOLOGY
+  REAL_ESTATE
+  SERVICES
+  OTHER
+}
+
+// NFT Collection and Asset Management Models
+model NFTCollection {
+  id              String   @id @default(cuid())
+  name            String
+  symbol          String
+  description     String?
+  
+  // Hedera Information
+  tokenId         String?  @unique  // Hedera token ID (0.0.xxxxx)
+  treasuryId      String?             // Treasury account ID
+  supplyKey       String?             // Supply key for minting (encrypted)
+  adminKey        String?             // Admin key for management (encrypted)
+  supplyKeyDisplayed Boolean @default(false) // Track if supply key was shown to user
+  
+  // Collection Metadata
+  category        AssetCategory
+  assetType       String              // Specific asset type (Solar Panel, Copper Ore, etc.)
+  maxSupply       Int      @default(1000000)
+  currentSupply   Int      @default(0)
+  
+  // User Association
+  createdBy       String?             // User wallet address who created this collection
+  
+  // Relationships
+  businessId      String
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  assets          NFTAsset[]
+  
+  // Metadata
+  imageUrl        String?
+  metadataUri     String?
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Status
+  status          CollectionStatus @default(ACTIVE)
+  
+  @@map("nft_collections")
+}
+
+model NFTAsset {
+  id              String   @id @default(cuid())
+  
+  // Asset Information
+  name            String
+  description     String
+  
+  // Collection Reference
+  collectionId    String
+  collection      NFTCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  
+  // Hedera Information
+  tokenId         String              // Collection token ID (same as collection)
+  serialNumber    Int                 // Unique serial number within collection
+  
+  // Asset Details from Form
+  assetData       String              // JSON string of form data
+  quantity        Float?
+  unit            String?
+  quality         String?
+  location        String?
+  certifications  String?             // JSON array of certifications
+  
+  // Media
+  imageUrl        String?
+  aiImageUrl      String?             // AI generated image
+  aiImageCID      String?             // IPFS CID for AI image
+  documentUrls    String?             // JSON array of document URLs
+  
+  // Metadata
+  metadataUri     String?             // IPFS URI for metadata
+  metadataHash    String?             // IPFS hash
+  
+  // User Information
+  createdBy       String              // User wallet address
+  ownerId         String
+  owner           Business @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  
+  // Auction Reference
+  auctionId       String?
+  auction         Auction? @relation(fields: [auctionId], references: [id])
+  
+  // Status & Pricing
+  status          AssetStatus @default(PENDING)
+  currentPrice    Float?
+  lastSalePrice   Float?
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Marketplace Listing Relation
+  marketplaceListing MarketplaceListing?
+  
+  @@unique([tokenId, serialNumber])
+  @@map("nft_assets")
+}
+
+enum ListingStatus {
+  PENDING
+  ACTIVE
+  SOLD
+  CANCELLED
+  EXPIRED
+}
+
+model MarketplaceListing {
+  id                String   @id @default(cuid())
+  
+  // NFT Reference
+  nftAssetId        String   @unique
+  nftAsset          NFTAsset @relation(fields: [nftAssetId], references: [id], onDelete: Cascade)
+  
+  // Seller Information
+  seller            String              // Hedera account ID (0.0.xxxxx)
+  sellerBusinessId  String?
+  sellerBusiness    Business? @relation(fields: [sellerBusinessId], references: [id])
+  
+  // Pricing
+  priceHbar         Float
+  priceNaira        Float?              // Legacy field for compatibility
+  
+  // Listing Details
+  status            ListingStatus @default(ACTIVE)
+  views             Int @default(0)
+  favorites         Int @default(0)
+  
+  // NFT Allowance (for operator to transfer NFT when purchase happens)
+  allowanceGranted       Boolean  @default(false)
+  allowanceTransactionId String?
+  
+  // Seller Signature (for security)
+  sellerSignature   String?
+  signatureExpiry   DateTime?
+  
+  // Buyer Lock (for reservation system)
+  buyerLockId       String?
+  buyerLockExpiry   DateTime?
+  
+  // Sale Information
+  soldAt            DateTime?
+  transactionId     String?             // Hedera transaction ID of the purchase
+  
+  // Timestamps
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  expiresAt         DateTime?
+  
+  @@map("marketplace_listings")
+}
+
+model User {
+  id              String   @id @default(cuid())
+  
+  // User Information
+  walletAddress   String   @unique
+  walletType      WalletType
+  
+  // Profile
+  displayName     String?
+  email           String?
+  avatar          String?
+  
+  // Business Association (optional)
+  businessId      String?
+  business        Business? @relation(fields: [businessId], references: [id])
+  
+  // NFT Activity
+  createdAssets   Int      @default(0)
+  ownedAssets     Int      @default(0)
+  totalValue      Float    @default(0)
+  
+  // Settings
+  notifications   Boolean  @default(true)
+  publicProfile   Boolean  @default(false)
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  lastActiveAt    DateTime @default(now())
+  
+  @@map("users")
+}
+
+enum CollectionStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
+  SUSPENDED
+}
+
+enum AssetStatus {
+  PENDING
+  MINTED
+  LISTED
+  IN_AUCTION
+  SOLD
+  TRANSFERRED
+  BURNED
+}

@@ -1,0 +1,289 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@custom-variant dark (&:is(.dark *));
+
+/* AI Assistant smooth animations */
+@keyframes gentleBob {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-3px) rotate(0.5deg);
+  }
+  50% {
+    transform: translateY(-1px) rotate(0deg);
+  }
+  75% {
+    transform: translateY(-2px) rotate(-0.5deg);
+  }
+}
+
+@keyframes floatParticle {
+  0%, 100% {
+    opacity: 0.3;
+    transform: translateY(0) translateX(0);
+  }
+  25% {
+    opacity: 0.8;
+    transform: translateY(-8px) translateX(2px);
+  }
+  50% {
+    opacity: 0.4;
+    transform: translateY(-12px) translateX(-1px);
+  }
+  75% {
+    opacity: 0.7;
+    transform: translateY(-6px) translateX(1px);
+  }
+}
+
+/* Glassmorphic styling for Africa map */
+.glass-map {
+  backdrop-filter: blur(15px);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+  position: relative;
+  overflow: hidden;
+  /* Ensure the map container doesn't collapse when parent has no explicit height */
+  min-height: 420px;
+}
+
+.glass-map::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* Glass card styling */
+.glass-card {
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+}
+
+/* Country hover effects */
+.country-path {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.country-path:hover {
+  filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.6));
+}
+
+/* Responsive glassmorphic effects */
+@media (max-width: 768px) {
+  .glass-map {
+    padding: 1rem;
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
+  }
+  
+  .glass-card {
+    backdrop-filter: blur(8px);
+  }
+}
+
+:root {
+  /* Updated color tokens to match African B2B marketplace design brief */
+  --background: oklch(0.98 0.01 110); /* #f7fafc - Soft off-white */
+  --foreground: oklch(0.32 0 0); /* #22292f - Deep slate gray for text */
+  --card: oklch(0.96 0.01 110); /* #f1f5f9 - Gentle card background */
+  --card-foreground: oklch(0.32 0 0); /* #22292f - Deep slate gray text */
+  --popover: oklch(0.99 0.005 110); /* #f9fafb - Popover, slightly lighter */
+  --popover-foreground: oklch(0.32 0 0); /* #22292f - Deep slate gray text */
+  --primary: oklch(0.55 0.13 145); /* #1e7e5a - Muted green, less harsh */
+  --primary-foreground: oklch(0.99 0 0); /* #fff - White text on primary */
+  --secondary: oklch(0.85 0.07 110); /* #d1fae5 - Soft mint accent */
+  --secondary-foreground: oklch(0.32 0 0); /* #22292f - Deep slate gray text */
+  --muted: oklch(0.95 0.01 110); /* #f3f4f6 - Muted background */
+  --muted-foreground: oklch(0.45 0 0); /* #6b7280 - Muted gray text */
+  --accent: oklch(0.8 0.13 145); /* #6ee7b7 - Soft green accent */
+  --accent-foreground: oklch(0.32 0 0); /* #22292f - Deep slate gray text */
+  --destructive: oklch(0.65 0.18 70); /* #f59e42 - Softer orange for errors */
+  --destructive-foreground: oklch(0.99 0 0); /* #fff - White text */
+  --border: oklch(0.9 0.01 110); /* #e5e7eb - Light border */
+  --input: oklch(0.98 0.01 110); /* #f7fafc - Input background */
+  --ring: oklch(0.55 0.13 145 / 0.5); /* Primary with opacity for focus */
+  --chart-1: oklch(0.506 0.177 142.38); /* #15803d - Primary green */
+  --chart-2: oklch(0.633 0.179 70.67); /* #d97706 - Orange */
+  --chart-3: oklch(0.548 0.15 195.75); /* #0891b2 - Blue */
+  --chart-4: oklch(0.984 0.024 142.5); /* #f0fdf4 - Light green */
+  --chart-5: oklch(0.748 0.204 110.72); /* #84cc16 - Accent green */
+  --radius: 0.5rem; /* Moderate corner rounding */
+  --sidebar: oklch(0.984 0.024 142.5); /* #f0fdf4 - Light green sidebar */
+  --sidebar-foreground: oklch(0.278 0 0); /* #374151 - Dark gray text */
+  --sidebar-primary: oklch(0.506 0.177 142.38); /* #15803d - Primary green */
+  --sidebar-primary-foreground: oklch(1 0 0); /* #ffffff - White text */
+  --sidebar-accent: oklch(0.748 0.204 110.72); /* #84cc16 - Accent green */
+  --sidebar-accent-foreground: oklch(0.278 0 0); /* #374151 - Dark gray text */
+  --sidebar-border: oklch(0.922 0.013 106.42); /* #e5e7eb - Light border */
+  --sidebar-ring: oklch(0.506 0.177 142.38 / 0.5); /* Primary with opacity */
+  --font-open-sans: "Open Sans", sans-serif;
+  --font-work-sans: "Work Sans", sans-serif;
+}
+
+.dark {
+  /* Updated dark mode tokens to maintain design consistency */
+  --background: oklch(0.22 0.01 110); /* #23272f - Deep blue-gray */
+  --foreground: oklch(0.98 0 0); /* #f8fafc - Light text */
+  --card: oklch(0.26 0.01 110); /* #2d333b - Slightly lighter card */
+  --card-foreground: oklch(0.98 0 0); /* #f8fafc - Light text on cards */
+  --popover: oklch(0.22 0.01 110); /* #23272f - Popover */
+  --popover-foreground: oklch(0.98 0 0); /* #f8fafc - Light text */
+  --primary: oklch(0.7 0.13 145); /* #34d399 - Brighter green for dark mode */
+  --primary-foreground: oklch(0.22 0 0); /* #23272f - Dark text on primary */
+  --secondary: oklch(0.32 0.01 110); /* #374151 - Muted blue-gray */
+  --secondary-foreground: oklch(0.98 0 0); /* #f8fafc - Light text */
+  --muted: oklch(0.32 0.01 110); /* #374151 - Muted background */
+  --muted-foreground: oklch(0.7 0 0); /* #d1d5db - Muted gray text */
+  --accent: oklch(0.55 0.13 145); /* #1e7e5a - Muted green accent */
+  --accent-foreground: oklch(0.98 0 0); /* #f8fafc - Light text */
+  --destructive: oklch(0.65 0.18 70); /* #f59e42 - Softer orange for errors */
+  --destructive-foreground: oklch(0.98 0 0); /* #f8fafc - Light text */
+  --border: oklch(0.32 0.01 110); /* #374151 - Dark border */
+  --input: oklch(0.22 0.01 110); /* #23272f - Input background */
+  --ring: oklch(0.7 0.13 145 / 0.5); /* Primary with opacity for focus */
+  --chart-1: oklch(0.748 0.204 110.72); /* Bright green */
+  --chart-2: oklch(0.633 0.179 70.67); /* Orange */
+  --chart-3: oklch(0.548 0.15 195.75); /* Blue */
+  --chart-4: oklch(0.506 0.177 142.38); /* Professional green */
+  --chart-5: oklch(0.769 0.188 70.08); /* Warm accent */
+  --sidebar: oklch(0.205 0 0); /* Dark sidebar */
+  --sidebar-foreground: oklch(0.985 0 0); /* Light text */
+  --sidebar-primary: oklch(0.748 0.204 110.72); /* Bright green */
+  --sidebar-primary-foreground: oklch(0.145 0 0); /* Dark text */
+  --sidebar-accent: oklch(0.269 0 0); /* Dark accent */
+  --sidebar-accent-foreground: oklch(0.985 0 0); /* Light text */
+  --sidebar-border: oklch(0.269 0 0); /* Dark border */
+  --sidebar-ring: oklch(0.748 0.204 110.72 / 0.5); /* Accent with opacity */
+  --font-open-sans: "Open Sans", sans-serif;
+  --font-work-sans: "Work Sans", sans-serif;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --font-sans: var(--font-open-sans);
+  --font-serif: var(--font-work-sans);
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  
+  /* Compact UI - Make everything feel like 80% zoom at 100% */
+  html {
+    font-size: 14px; /* Default is 16px, this makes everything ~87.5% */
+  }
+  
+  /* Adjust container max-width for better space usage */
+  .container {
+    @apply max-w-[1400px];
+  }
+  
+  /* Tighter spacing for cards */
+  .card {
+    @apply p-4;
+  }
+  
+  /* Reduce heading sizes slightly */
+  h1 {
+    @apply text-2xl md:text-3xl;
+  }
+  
+  h2 {
+    @apply text-xl md:text-2xl;
+  }
+  
+  h3 {
+    @apply text-lg md:text-xl;
+  }
+}
+
+/* Custom scrollbar for filter dropdowns */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.5);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 114, 128, 0.7);
+}

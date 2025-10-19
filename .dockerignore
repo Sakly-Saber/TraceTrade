@@ -1,0 +1,11 @@
+.git
+.next/
+.pnpm-store/
+node_modules/
+npm-debug.log
+README.md
+.env
+.env.local
+.env.development
+.env.test
+.env.production

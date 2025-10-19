@@ -1,0 +1,791 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import    setPurchasing(item.id)
+    
+    try {
+      // Validation: Ensure listing ID exists
+      if (!item.listingId) {
+        throw new Error('Invalid listing: No listing ID found. This item may not be properly listed.')
+      }
+      
+      toast.info("� Initiating purchase...")
+      
+      // Step 1: Validate purchase with backend API
+      console.log('📤 Step 1: Validating purchase with backend...')
+      console.log('📋 Item details:', { id: item.id, listingId: item.listingId, name: item.name })
+      
+      const validateResponse = await fetch('/api/marketplace/purchase', { } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { 
+  Search, 
+  Filter, 
+  Grid, 
+  List,
+  Star,
+  MapPin,
+  Clock,
+  Users,
+  DollarSign,
+  Eye,
+  Heart,
+  ExternalLink,
+  Gavel,
+  ShoppingCart,
+  Menu,
+  Loader2,
+  ChevronUp,
+  ChevronDown
+} from "lucide-react"
+import { Navigation } from "@/components/navigation"
+import { MarketplaceSidebar, type MarketplaceFilters } from "@/components/marketplace-sidebar"
+import { VerticalFilterTrigger } from "@/components/vertical-filter-trigger"
+import { useWallet } from "@/hooks/use-wallet"
+import { cn } from "@/lib/utils"
+import { formatHbar, TRANSACTION_FEE_HBAR } from "@/lib/utils/pricing"
+import { toast } from "sonner"
+import type { MarketplaceItem } from "@/lib/services/marketplaceService"
+import { executeTransaction } from "@/lib/hashconnect"
+import { TransferTransaction, Hbar, TokenId, NftId, AccountId } from "@hashgraph/sdk"
+
+export default function MarketplacePage() {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [items, setItems] = useState<MarketplaceItem[]>([])
+  const [filteredItems, setFilteredItems] = useState<MarketplaceItem[]>([])
+  const [favorites, setFavorites] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  
+  const [filters, setFilters] = useState<MarketplaceFilters>({
+    search: '',
+    category: 'all',
+    location: [],
+    priceRange: [0, 10000000],
+    status: 'all',
+    rating: 0,
+    verified: false,
+    sortBy: 'latest'
+  })
+
+  const { isConnected, address, validatePurchase } = useWallet()
+  
+  const [purchasing, setPurchasing] = useState<string | null>(null)
+
+  // Fetch marketplace items from API
+  const fetchMarketplaceItems = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      console.log('🔍 Fetching marketplace items...')
+      const response = await fetch('/api/marketplace')
+      const result = await response.json()
+      
+      console.log('📦 Marketplace API response:', result)
+      
+      if (result.success) {
+        console.log(`✅ Loaded ${result.data.length} marketplace items`)
+        setItems(result.data)
+        setFilteredItems(result.data)
+      } else {
+        console.error('❌ Failed to fetch:', result.error)
+        setError(result.error || 'Failed to fetch marketplace items')
+        // Fallback to empty array
+        setItems([])
+        setFilteredItems([])
+      }
+    } catch (err) {
+      console.error('❌ Network error fetching marketplace items:', err)
+      setError('Network error - failed to fetch marketplace items')
+      setItems([])
+      setFilteredItems([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchMarketplaceItems()
+    
+    // Optional: Auto-refresh every 30 seconds to catch new listings
+    const interval = setInterval(fetchMarketplaceItems, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Apply filters whenever filters change
+  useEffect(() => {
+    let filtered = [...items]
+
+    // Text search
+    if (filters.search) {
+      filtered = filtered.filter(item => 
+        item.name.toLowerCase().includes(filters.search.toLowerCase()) ||
+        item.description.toLowerCase().includes(filters.search.toLowerCase()) ||
+        item.category.toLowerCase().includes(filters.search.toLowerCase())
+      )
+    }
+
+    // Category filter
+    if (filters.category !== 'all') {
+      filtered = filtered.filter(item => item.category === filters.category)
+    }
+
+    // Location filter
+    if (filters.location.length > 0) {
+      filtered = filtered.filter(item => 
+        item.location.some(loc => filters.location.includes(loc))
+      )
+    }
+
+    // Price range filter
+    filtered = filtered.filter(item => 
+      item.price >= filters.priceRange[0] && item.price <= filters.priceRange[1]
+    )
+
+    // Status filter
+    if (filters.status !== 'all') {
+      filtered = filtered.filter(item => item.status === filters.status)
+    }
+
+    // Rating filter
+    if (filters.rating > 0) {
+      filtered = filtered.filter(item => item.rating >= filters.rating)
+    }
+
+    // Verified filter
+    if (filters.verified) {
+      filtered = filtered.filter(item => item.verified)
+    }
+
+    // Sort
+    switch (filters.sortBy) {
+      case 'price-low':
+        filtered.sort((a, b) => a.price - b.price)
+        break
+      case 'price-high':
+        filtered.sort((a, b) => b.price - a.price)
+        break
+      case 'popular':
+        filtered.sort((a, b) => b.views - a.views)
+        break
+      case 'rating':
+        filtered.sort((a, b) => b.rating - a.rating)
+        break
+      case 'ending-soon':
+        filtered.sort((a, b) => {
+          if (!a.auctionEndTime && !b.auctionEndTime) return 0
+          if (!a.auctionEndTime) return 1
+          if (!b.auctionEndTime) return -1
+          const aTime = a.auctionEndTime instanceof Date ? a.auctionEndTime.getTime() : new Date(a.auctionEndTime).getTime()
+          const bTime = b.auctionEndTime instanceof Date ? b.auctionEndTime.getTime() : new Date(b.auctionEndTime).getTime()
+          return aTime - bTime
+        })
+        break
+      default: // 'latest'
+        filtered.sort((a, b) => {
+          const aTime = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt).getTime()
+          const bTime = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt).getTime()
+          return bTime - aTime
+        })
+    }
+
+    setFilteredItems(filtered)
+  }, [filters, items])
+
+  const toggleFavorite = (itemId: string) => {
+    setFavorites(prev => 
+      prev.includes(itemId) 
+        ? prev.filter(id => id !== itemId)
+        : [...prev, itemId]
+    )
+  }
+  
+  const handlePurchase = async (item: MarketplaceItem) => {
+    // Validate wallet connection
+    if (!isConnected || !address) {
+      toast.error("Please connect your wallet first")
+      return
+    }
+    
+    // Check if user is trying to buy their own item
+    if (item.seller === address) {
+      toast.error("You cannot purchase your own listing")
+      return
+    }
+    
+    // Price already in HBAR from marketplace item
+    const priceHbar = item.priceHbar || 0
+    
+    // Validate sufficient balance (client-side check)
+    const validation = validatePurchase(priceHbar, TRANSACTION_FEE_HBAR)
+    if (!validation.valid) {
+      toast.error(validation.error || "Insufficient balance")
+      return
+    }
+    
+    setPurchasing(item.id)
+    
+    try {
+      toast.info("� Initiating purchase...")
+      
+      // Step 1: Validate purchase with backend API
+      console.log('📤 Step 1: Validating purchase with backend...')
+      const validateResponse = await fetch('/api/marketplace/purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          listingId: item.listingId, // ✅ Use marketplace listing ID
+          buyerAccountId: address
+        })
+      })
+      
+      if (!validateResponse.ok) {
+        const errorData = await validateResponse.json()
+        throw new Error(errorData.error || 'Purchase validation failed')
+      }
+      
+      const txParams = await validateResponse.json()
+      console.log('✅ Validation successful:', txParams)
+      
+      // Step 2: Build atomic swap transaction (HBAR for NFT)
+      console.log('🔨 Step 2: Building atomic swap transaction...')
+      
+      const buyerAccount = AccountId.fromString(address)
+      const sellerAccount = AccountId.fromString(txParams.fromAccount)
+      const tokenId = TokenId.fromString(txParams.tokenId)
+      const nftId = new NftId(tokenId, txParams.serialNumber)
+      const paymentAmount = new Hbar(txParams.paymentAmount)
+      
+      // Build transfer transaction with atomic swap:
+      // 1. Buyer sends HBAR to seller
+      // 2. Seller sends NFT to buyer
+      const transferTransaction = new TransferTransaction()
+        .addHbarTransfer(buyerAccount, paymentAmount.negated()) // Debit buyer
+        .addHbarTransfer(sellerAccount, paymentAmount)           // Credit seller
+        .addNftTransfer(tokenId, txParams.serialNumber, sellerAccount, buyerAccount) // Transfer NFT
+        .setTransactionMemo(`Purchase NFT #${txParams.serialNumber}`)
+        .setMaxTransactionFee(new Hbar(2)) // Set reasonable max fee
+      
+      console.log('📝 Transaction built:', {
+        buyer: address,
+        seller: txParams.fromAccount,
+        nft: `${txParams.tokenId}#${txParams.serialNumber}`,
+        price: `${txParams.paymentAmount} HBAR`
+      })
+      
+      // Step 3: Sign and execute with HashConnect (triggers HashPack popup)
+      console.log('🔐 Step 3: Signing transaction with wallet...')
+      toast.info("📱 Please approve the transaction in HashPack")
+      
+      const result = await executeTransaction(transferTransaction, address)
+      
+      if (!result.success) {
+        throw new Error('Transaction failed or was rejected')
+      }
+      
+      console.log('✅ Transaction executed:', result.transactionId)
+      toast.success("🎉 Transaction signed and submitted!")
+      
+      // Step 4: Confirm purchase in database
+      console.log('💾 Step 4: Confirming purchase in database...')
+      const confirmResponse = await fetch('/api/marketplace/purchase/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          listingId: item.listingId, // ✅ Use marketplace listing ID
+          transactionId: result.transactionId,
+          buyerAccountId: address
+        })
+      })
+      
+      if (!confirmResponse.ok) {
+        const errorData = await confirmResponse.json()
+        console.error('⚠️ Database confirmation failed:', errorData)
+        toast.warning("Transaction completed but database update failed. Please contact support.")
+        return
+      }
+      
+      const confirmation = await confirmResponse.json()
+      console.log('✅ Purchase confirmed:', confirmation)
+      
+      // Step 5: Update UI
+      toast.success(`✅ Successfully purchased NFT #${txParams.serialNumber}!`)
+      
+      // Refresh items to reflect the purchase
+      fetchMarketplaceItems()
+      
+    } catch (error) {
+      console.error("❌ Purchase error:", error)
+      
+      if (error instanceof Error) {
+        if (error.message.includes('rejected') || error.message.includes('denied')) {
+          toast.error("Transaction was rejected by wallet")
+        } else if (error.message.includes('insufficient')) {
+          toast.error("Insufficient balance for this purchase")
+        } else {
+          toast.error(error.message)
+        }
+      } else {
+        toast.error("Purchase failed. Please try again.")
+      }
+    } finally {
+      setPurchasing(null)
+    }
+  }
+
+  const getTimeRemaining = (endTime: Date) => {
+    const now = new Date()
+    const diff = endTime.getTime() - now.getTime()
+    
+    if (diff <= 0) return "Ended"
+    
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+    
+    if (days > 0) return `${days}d ${hours}h`
+    if (hours > 0) return `${hours}h ${minutes}m`
+    return `${minutes}m`
+  }
+
+  // Calculate active filter count
+  const filterCount = [
+    filters.search !== '',
+    filters.category !== 'all',
+    filters.location.length > 0,
+    filters.priceRange[0] !== 0 || filters.priceRange[1] !== 10000000,
+    filters.status !== 'all',
+    filters.rating > 0,
+    filters.verified,
+    filters.sortBy !== 'latest'
+  ].filter(Boolean).length
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-red-50">
+      {/* Glassmorphic overlay background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-orange-200/20 via-transparent to-red-200/20"></div>
+      
+      <div className="relative z-10">
+        {/* Navigation */}
+        <Navigation />
+        
+        {/* Marketplace Sidebar */}
+        <MarketplaceSidebar
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          filters={filters}
+          onFiltersChange={setFilters}
+        />
+        
+        {/* Overlay when sidebar is open */}
+        {sidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black/20 z-40 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
+        {/* Main Content */}
+        <div className={cn(
+          "transition-all duration-300 ease-in-out",
+          sidebarOpen ? "lg:ml-80" : "ml-0"
+        )}>
+          {/* Page Header */}
+          <div className="border-b border-white/30 bg-white/40 backdrop-blur-md">
+            <div className="container mx-auto px-4 py-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-3xl font-serif font-bold text-foreground mb-2">
+                    🛒 Marketplace
+                  </h1>
+                  <p className="text-muted-foreground">
+                    Discover and trade tokenized assets from across Africa
+                  </p>
+                </div>
+                
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={viewMode === 'grid' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setViewMode('grid')}
+                    >
+                      <Grid className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant={viewMode === 'list' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setViewMode('list')}
+                    >
+                      <List className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Search and Filter Row */}
+              <div className="mt-4 flex items-center gap-3">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search marketplace..."
+                    value={filters.search}
+                    onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                    className="pl-10"
+                  />
+                </div>
+                
+                {/* Horizontal Filter Button */}
+                <Button
+                  variant="outline"
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  className="flex items-center gap-2 whitespace-nowrap"
+                >
+                  <Filter className="h-4 w-4" />
+                  <span>FILTERS</span>
+                  {filterCount > 0 && (
+                    <Badge variant="default" className="ml-1 rounded-full px-2 py-0.5 text-xs">
+                      {filterCount}
+                    </Badge>
+                  )}
+                  {sidebarOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Results Count and Quick Filters */}
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                Showing {filteredItems.length} of {items.length} results
+              </div>
+              <div className="flex items-center gap-2">
+                {filters.location.length > 0 && (
+                  <Badge variant="secondary">
+                    📍 {filters.location.length} location{filters.location.length > 1 ? 's' : ''}
+                  </Badge>
+                )}
+                {filters.category !== 'all' && (
+                  <Badge variant="secondary">
+                    🏷️ {filters.category}
+                  </Badge>
+                )}
+                {filters.verified && (
+                  <Badge variant="secondary">
+                    ✅ Verified
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Marketplace Grid/List */}
+          <div className="container mx-auto px-4 pb-12">
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Card className="text-center py-12">
+                  <CardContent>
+                    <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin text-blue-500" />
+                    <p className="text-lg text-muted-foreground">Loading marketplace items...</p>
+                  </CardContent>
+                </Card>
+              </div>
+            ) : error ? (
+              <Card className="text-center py-12">
+                <CardContent>
+                  <div className="text-muted-foreground mb-4">
+                    <Search className="h-12 w-12 mx-auto mb-4 opacity-50 text-red-500" />
+                    <p className="text-lg text-red-600">Error Loading Marketplace</p>
+                    <p className="text-sm">{error}</p>
+                    <p className="text-xs mt-2">This might be because the database is not seeded yet.</p>
+                  </div>
+                  <Button 
+                    onClick={() => window.location.reload()}
+                    className="mr-2"
+                  >
+                    Retry
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      setError(null)
+                      setItems([])
+                      setFilteredItems([])
+                    }}
+                  >
+                    Continue Without Data
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : filteredItems.length === 0 ? (
+              <Card className="text-center py-12">
+                <CardContent>
+                  <div className="text-muted-foreground mb-4">
+                    <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="text-lg">No items found</p>
+                    <p>Try adjusting your filters or search terms</p>
+                  </div>
+                  <Button onClick={() => setFilters(prev => ({ ...prev, search: '', category: 'all', location: [], verified: false }))}>
+                    Clear Filters
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className={cn(
+                "gap-6",
+                viewMode === 'grid' 
+                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                  : "space-y-4"
+              )}>
+                {filteredItems.map((item) => (
+                  <MarketplaceCard
+                    key={item.id}
+                    item={item}
+                    viewMode={viewMode}
+                    isFavorite={favorites.includes(item.id)}
+                    onToggleFavorite={toggleFavorite}
+                    onPurchase={handlePurchase}
+                    isOwner={isConnected && item.seller === address}
+                    isPurchasing={purchasing === item.id}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface MarketplaceCardProps {
+  item: MarketplaceItem
+  viewMode: 'grid' | 'list'
+  isFavorite: boolean
+  onToggleFavorite: (id: string) => void
+  onPurchase: (item: MarketplaceItem) => Promise<void>
+  isOwner: boolean
+  isPurchasing: boolean
+}
+
+function MarketplaceCard({ item, viewMode, isFavorite, onToggleFavorite, onPurchase, isOwner, isPurchasing }: MarketplaceCardProps) {
+  const getTimeRemaining = (endTime: Date | string) => {
+    const now = new Date()
+    const endDateTime = endTime instanceof Date ? endTime : new Date(endTime)
+    const diff = endDateTime.getTime() - now.getTime()
+    
+    if (diff <= 0) return "Ended"
+    
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+    
+    if (days > 0) return `${days}d ${hours}h`
+    if (hours > 0) return `${hours}h ${minutes}m`
+    return `${minutes}m`
+  }
+
+  if (viewMode === 'list') {
+    return (
+      <Card className="bg-white/60 backdrop-blur-sm border-white/30 hover:bg-white/80 transition-all duration-300">
+        <CardContent className="p-6">
+          <div className="flex gap-6">
+            {/* Image */}
+            <div className="w-32 h-32 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+              <img
+                src={item.image}
+                alt={item.name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  // Fallback to placeholder if image fails to load
+                  const target = e.target as HTMLImageElement
+                  target.src = '/placeholder.jpg'
+                }}
+              />
+            </div>
+            
+            {/* Content */}
+            <div className="flex-1 space-y-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-lg">{item.name}</h3>
+                    {item.verified && <Badge variant="secondary">✅ Verified</Badge>}
+                    {item.status === 'auction' && <Badge variant="destructive">⚡ Live Auction</Badge>}
+                  </div>
+                  <p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onToggleFavorite(item.id)}
+                  className={cn(isFavorite && "text-red-500")}
+                >
+                  <Heart className={cn("h-4 w-4", isFavorite && "fill-current")} />
+                </Button>
+              </div>
+              
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <MapPin className="h-4 w-4" />
+                  {item.location.join(", ")}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                  {item.rating}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Eye className="h-4 w-4" />
+                  {item.views}
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-2xl font-bold">
+                    {item.priceHbar ? `${formatHbar(item.priceHbar)}` : `${item.currency}${item.price.toLocaleString()}`}
+                  </div>
+                  {item.status === 'auction' && item.auctionEndTime && (
+                    <div className="text-sm text-orange-600 flex items-center gap-1">
+                      <Clock className="h-4 w-4" />
+                      Ends in {getTimeRemaining(item.auctionEndTime)}
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  {item.status === 'auction' ? (
+                    <Button className="bg-gradient-to-r from-green-500 to-emerald-600">
+                      <Gavel className="h-4 w-4 mr-2" />
+                      Place Bid
+                    </Button>
+                  ) : (
+                    <Button 
+                      className="bg-gradient-to-r from-blue-500 to-purple-600"
+                      onClick={() => onPurchase(item)}
+                      disabled={isOwner || isPurchasing}
+                    >
+                      {isPurchasing ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <ShoppingCart className="h-4 w-4 mr-2" />
+                          {isOwner ? "Your Listing" : "Buy Now"}
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Grid view
+  return (
+    <Card className="bg-white/60 backdrop-blur-sm border-white/30 hover:bg-white/80 transition-all duration-300 group">
+      <div className="relative">
+        {/* Image */}
+        <div className="aspect-square rounded-t-lg overflow-hidden bg-muted">
+          <img
+            src={item.image}
+            alt={item.name}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            onError={(e) => {
+              // Fallback to placeholder if image fails to load
+              const target = e.target as HTMLImageElement
+              target.src = '/placeholder.jpg'
+            }}
+          />
+        </div>
+        
+        {/* Overlay Actions */}
+        <div className="absolute top-3 right-3 flex gap-2">
+          {item.verified && <Badge variant="secondary" className="text-xs">✅</Badge>}
+          {item.status === 'auction' && <Badge variant="destructive" className="text-xs">⚡</Badge>}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onToggleFavorite(item.id)}
+            className={cn(
+              "bg-white/80 backdrop-blur-sm hover:bg-white",
+              isFavorite && "text-red-500"
+            )}
+          >
+            <Heart className={cn("h-4 w-4", isFavorite && "fill-current")} />
+          </Button>
+        </div>
+      </div>
+      
+      <CardContent className="p-4 space-y-3">
+        <div>
+          <h3 className="font-semibold line-clamp-1">{item.name}</h3>
+          <p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p>
+        </div>
+        
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <MapPin className="h-3 w-3" />
+            {item.location[0]}
+          </div>
+          <div className="flex items-center gap-1">
+            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+            {item.rating}
+          </div>
+          <div className="flex items-center gap-1">
+            <Eye className="h-3 w-3" />
+            {item.views}
+          </div>
+        </div>
+        
+        <div className="space-y-3">
+          <div className="text-xl font-bold">
+            {item.priceHbar ? `${formatHbar(item.priceHbar)}` : `${item.currency}${item.price.toLocaleString()}`}
+          </div>
+          
+          {item.status === 'auction' && item.auctionEndTime && (
+            <div className="text-sm text-orange-600 flex items-center gap-1">
+              <Clock className="h-4 w-4" />
+              Ends in {getTimeRemaining(item.auctionEndTime)}
+            </div>
+          )}
+          
+          {item.status === 'auction' ? (
+            <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700">
+              <Gavel className="h-4 w-4 mr-2" />
+              Place Bid
+            </Button>
+          ) : (
+            <Button 
+              className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+              onClick={() => onPurchase(item)}
+              disabled={isOwner || isPurchasing}
+            >
+              {isPurchasing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  {isOwner ? "Your Listing" : "Buy Now"}
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
