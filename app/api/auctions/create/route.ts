@@ -31,7 +31,9 @@ export async function POST(req: NextRequest) {
     })
 
     // Validate required fields
-    if (!tokenId || typeof serialNumber !== 'number' || !seller || !auctionName || !startingBid || !durationHours) {
+    // durationHours may be a fractional number (e.g. 1 minute = 1/60 hours).
+    // Use explicit null/undefined check so small positive values are accepted.
+    if (!tokenId || typeof serialNumber !== 'number' || !seller || !auctionName || !startingBid || durationHours === undefined || durationHours === null) {
       return NextResponse.json(
         { success: false, error: 'Missing required fields' },
         { status: 400 }

@@ -1,0 +1,44 @@
+# Base image for installing dependencies
+FROM node:20-alpine AS base
+WORKDIR /app
+COPY package.json pnpm-lock.yaml ./
+RUN npm install -g pnpm
+
+# Builder stage for building the Next.js application
+FROM node:20-alpine AS builder
+WORKDIR /app
+RUN npm install -g pnpm
+COPY package.json pnpm-lock.yaml ./
+
+# Install dependencies
+RUN pnpm i
+
+# Add Prisma dependencies
+RUN pnpm add @prisma/client
+RUN pnpm add -D prisma
+
+# Copy all files including .env
+COPY . .
+
+# Set DATABASE_URL environment variable for Prisma
+ENV DATABASE_URL="file:./dev.db"
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Push database schema
+RUN npx prisma db push
+
+# Runner stage for development mode
+FROM node:20-alpine AS runner
+WORKDIR /app
+RUN npm install -g pnpm
+ENV NODE_ENV development
+# Set DATABASE_URL for runtime
+ENV DATABASE_URL="file:./dev.db"
+# Set the port for the Next.js application
+ENV PORT 3000
+EXPOSE 3000
+# Copy everything from builder
+COPY --from=builder /app ./
+CMD ["pnpm", "run", "dev"]
