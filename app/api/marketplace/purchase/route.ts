@@ -15,7 +15,7 @@ import {
 } from '@hashgraph/sdk'
 
 // Treasury operator account (escrow/marketplace operator)
-const OPERATOR_ID = process.env.NEXT_PUBLIC_OPERATOR_ID || '0.0.6854036'
+const OPERATOR_ID = process.env.NEXT_PUBLIC_OPERATOR_ID || '0.0.6606536'
 const OPERATOR_KEY = process.env.OPERATOR_PRIVATE_KEY || '0x2ed51bfe9104afd3340c3d26b7a316f008dbd8de0ba2b3e8389e247a5c32218c'
 
 export async function POST(req: NextRequest) {

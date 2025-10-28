@@ -154,6 +154,48 @@ export function BuyNowModal({ isOpen, onClose, listing, onSuccess }: BuyNowModal
         length: paymentTxId.length
       })
 
+      // 5.5. Check and associate token if needed (before NFT transfer)
+      console.log('🔍 [BUY NOW] Checking token association status...')
+      const MIRROR_NODE_URL = 'https://testnet.mirrornode.hedera.com'
+      const tokenCheckResponse = await fetch(`${MIRROR_NODE_URL}/api/v1/accounts/${address}/tokens`)
+      const tokenCheckData = await tokenCheckResponse.json()
+      const isAssociated = tokenCheckData.tokens?.some((t: any) => t.token_id === listing.tokenId)
+
+      if (!isAssociated) {
+        console.log('⚠️ [BUY NOW] Token not associated, associating now...')
+        
+        // Import HashConnect functions
+        const { initHashConnect, getHashConnectInstance, getPairingData, executeTransaction } = await import('@/lib/hashconnect')
+        await initHashConnect()
+        
+        const hashconnect = getHashConnectInstance()
+        if (!hashconnect) {
+          throw new Error('Failed to initialize HashConnect for token association')
+        }
+
+        const { TokenAssociateTransaction, TokenId, AccountId } = await import('@hashgraph/sdk')
+
+        const associateTransaction = new TokenAssociateTransaction()
+          .setAccountId(AccountId.fromString(address))
+          .setTokenIds([TokenId.fromString(listing.tokenId)])
+
+        console.log('💳 [BUY NOW] Sending token association to wallet...')
+        const associateResult = await executeTransaction(associateTransaction, address)
+
+        console.log('✅ [BUY NOW] Token association result:', associateResult)
+
+        if (!associateResult.success) {
+          throw new Error('Failed to associate token with your account. Please try again.')
+        }
+
+        console.log('✅ [BUY NOW] Token associated successfully:', associateResult.transactionId)
+
+        // Small delay to ensure association is confirmed on-chain
+        await new Promise(resolve => setTimeout(resolve, 2000))
+      } else {
+        console.log('✅ [BUY NOW] Token already associated with buyer account')
+      }
+
       // 6. Trigger backend NFT transfer using operator key
       console.log('🔄 [BUY NOW] Requesting NFT transfer from backend...')
       const nftTransferResponse = await fetch('/api/marketplace/execute-nft-transfer', {

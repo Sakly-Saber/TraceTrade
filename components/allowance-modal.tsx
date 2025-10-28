@@ -22,7 +22,7 @@ interface AllowanceModalProps {
   onSuccess: (transactionId: string) => void
 }
 
-const OPERATOR_ACCOUNT_ID = process.env.NEXT_PUBLIC_OPERATOR_ACCOUNT_ID || '0.0.6854036'
+const OPERATOR_ACCOUNT_ID = process.env.NEXT_PUBLIC_OPERATOR_ACCOUNT_ID || '0.0.6606536'
 
 export function AllowanceModal({
   isOpen,

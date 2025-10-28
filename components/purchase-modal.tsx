@@ -68,7 +68,41 @@ export function PurchaseModal({ isOpen, onClose, listing, buyerAccountId, onSucc
       console.log('✅ [PURCHASE] Wallet connected')
 
       // Import Hedera SDK
-      const { TransferTransaction, AccountId, TokenId, NftId, Hbar } = await import('@hashgraph/sdk')
+      const { TransferTransaction, AccountId, TokenId, NftId, Hbar, TokenAssociateTransaction } = await import('@hashgraph/sdk')
+
+      // Check if token is associated with buyer's account
+      console.log('🔍 [PURCHASE] Checking token association status...')
+      const MIRROR_NODE_URL = 'https://testnet.mirrornode.hedera.com'
+      const tokenCheckResponse = await fetch(`${MIRROR_NODE_URL}/api/v1/accounts/${buyerAccountId}/tokens`)
+      const tokenCheckData = await tokenCheckResponse.json()
+      const isAssociated = tokenCheckData.tokens?.some((t: any) => t.token_id === listing.nft.tokenId)
+
+      // If token is not associated, associate it first
+      if (!isAssociated) {
+        console.log('⚠️ [PURCHASE] Token not associated, associating now...')
+        toast.loading("Associating token with your account...", { id: "purchase-toast" })
+
+        const associateTransaction = new TokenAssociateTransaction()
+          .setAccountId(AccountId.fromString(buyerAccountId))
+          .setTokenIds([TokenId.fromString(listing.nft.tokenId)])
+
+        console.log('💳 [PURCHASE] Sending token association to wallet...')
+        const associateResult = await executeTransaction(associateTransaction, buyerAccountId)
+
+        console.log('✅ [PURCHASE] Token association result:', associateResult)
+
+        if (!associateResult.success) {
+          throw new Error('Failed to associate token with your account. Please try again.')
+        }
+
+        console.log('✅ [PURCHASE] Token associated successfully:', associateResult.transactionId)
+        toast.success("Token associated! Proceeding with purchase...", { id: "purchase-toast" })
+
+        // Small delay to ensure association is confirmed on-chain
+        await new Promise(resolve => setTimeout(resolve, 2000))
+      } else {
+        console.log('✅ [PURCHASE] Token already associated with buyer account')
+      }
 
       console.log('🛒 [PURCHASE] Starting atomic swap...', {
         listingId: listing.id,
@@ -137,6 +171,12 @@ export function PurchaseModal({ isOpen, onClose, listing, buyerAccountId, onSucc
 
       if (!apiResponse.ok || !apiResult.success) {
         console.error('❌ [PURCHASE] API error:', apiResult)
+        
+        // Check for token not associated error from backend
+        if (apiResult.code === 'TOKEN_NOT_ASSOCIATED') {
+          throw new Error('Token association was not properly set. Please refresh and try again.')
+        }
+        
         throw new Error(apiResult.error || 'Failed to complete purchase in database')
       }
 

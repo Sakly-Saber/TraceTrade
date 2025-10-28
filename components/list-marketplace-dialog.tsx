@@ -113,7 +113,9 @@ export function ListMarketplaceDialog({
       }
 
       const { AccountAllowanceApproveTransaction, AccountId, TokenId, NftId } = await import('@hashgraph/sdk')
-      const OPERATOR_ACCOUNT_ID = process.env.NEXT_PUBLIC_OPERATOR_ACCOUNT_ID || '0.0.5145195'
+      const OPERATOR_ACCOUNT_ID = process.env.NEXT_PUBLIC_OPERATOR_ACCOUNT_ID || '0.0.6606536'
+
+      console.log('🔐 [ALLOWANCE] Using operator account:', OPERATOR_ACCOUNT_ID)
 
       // Create NFT ID and allowance transaction
       const nftId = new NftId(TokenId.fromString(nft.tokenId), nft.serialNumber)

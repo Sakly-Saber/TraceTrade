@@ -11,13 +11,14 @@ import {
   AccountId,
   PrivateKey,
   Client,
-  Hbar
+  Hbar,
+  TokenAssociateTransaction
 } from '@hashgraph/sdk'
 
 // Treasury operator account (has allowance from seller)
-const OPERATOR_ID = process.env.NEXT_PUBLIC_OPERATOR_ID || '0.0.6854036'
-const OPERATOR_KEY = process.env.OPERATOR_PRIVATE_KEY || '0x2ed51bfe9104afd3340c3d26b7a316f008dbd8de0ba2b3e8389e247a5c32218c'
-const HEDERA_NETWORK = process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet'
+const OPERATOR_ID = process.env.NEXT_PUBLIC_OPERATOR_ID || process.env.OPERATOR_ID || '0.0.6606536'
+const OPERATOR_KEY = process.env.OPERATOR_KEY || process.env.OPERATOR_PRIVATE_KEY || '0x2ed51bfe9104afd3340c3d26b7a316f008dbd8de0ba2b3e8389e247a5c32218c'
+const HEDERA_NETWORK = process.env.HEDERA_NETWORK || process.env.NEXT_PUBLIC_HEDERA_NETWORK || 'testnet'
 
 // Hedera Mirror Node API
 const MIRROR_NODE_URL = HEDERA_NETWORK === 'mainnet'
@@ -101,13 +102,13 @@ export async function POST(req: NextRequest) {
     console.log('🔍 [NFT TRANSFER] Verifying HBAR payment to seller...')
     
     let paymentVerified: { success: boolean; error?: string } = { success: false }
-    const maxRetries = 5
-    const retryDelays = [1000, 2000, 3000, 5000, 8000] // Exponential backoff in ms
+    const maxRetries = 8
+    const retryDelays = [2000, 3000, 4000, 5000, 6000, 7000, 8000, 10000] // Longer delays for mirror node indexing
     
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       if (attempt > 0) {
-        console.log(`⏳ [NFT TRANSFER] Retry ${attempt}/${maxRetries - 1} - waiting ${retryDelays[attempt]}ms...`)
-        await new Promise(resolve => setTimeout(resolve, retryDelays[attempt]))
+        console.log(`⏳ [NFT TRANSFER] Retry ${attempt}/${maxRetries - 1} - waiting ${retryDelays[attempt - 1]}ms...`)
+        await new Promise(resolve => setTimeout(resolve, retryDelays[attempt - 1]))
       }
       
       paymentVerified = await verifyPayment(
@@ -149,6 +150,12 @@ export async function POST(req: NextRequest) {
       ? Client.forMainnet()
       : Client.forTestnet()
 
+    console.log('🔑 [NFT TRANSFER] Operator credentials:', {
+      operatorId: OPERATOR_ID,
+      keyFormat: OPERATOR_KEY.substring(0, 10) + '...',
+      network: HEDERA_NETWORK
+    })
+
     const operatorKey = PrivateKey.fromStringECDSA(OPERATOR_KEY)
     client.setOperator(OPERATOR_ID, operatorKey)
 
@@ -160,18 +167,120 @@ export async function POST(req: NextRequest) {
     const seller = AccountId.fromString(sellerAccountId)
     const buyer = AccountId.fromString(buyerAccountId)
 
+    console.log('📋 [NFT TRANSFER] Transfer details:', {
+      tokenId: listing.nftAsset.tokenId,
+      serialNumber: listing.nftAsset.serialNumber,
+      seller: sellerAccountId,
+      buyer: buyerAccountId,
+      operator: OPERATOR_ID,
+      allowanceGranted: listing.allowanceGranted,
+      allowanceTxId: listing.allowanceTransactionId
+    })
+
+    // 4a. Check if token is associated with buyer (query via mirror node)
+    console.log('🔍 [NFT TRANSFER] Checking token association status...')
+    const mirrorUrl = `${MIRROR_NODE_URL}/api/v1/accounts/${buyerAccountId}/tokens`
+    try {
+      const tokenCheckResponse = await fetch(mirrorUrl)
+      const tokenCheckData = await tokenCheckResponse.json()
+      const isAssociated = tokenCheckData.tokens?.some((t: any) => t.token_id === listing.nftAsset.tokenId)
+      
+      if (!isAssociated) {
+        console.log('❌ [NFT TRANSFER] Token not associated with buyer account')
+        return NextResponse.json({
+          success: false,
+          error: 'Token not associated with buyer account',
+          code: 'TOKEN_NOT_ASSOCIATED',
+          details: 'The buyer must associate the token with their account before the NFT can be transferred. Please complete token association on your wallet first.',
+          tokenId: listing.nftAsset.tokenId,
+          accountId: buyerAccountId
+        }, { status: 400 })
+      } else {
+        console.log('✅ [NFT TRANSFER] Token already associated with buyer account')
+      }
+    } catch (checkError: any) {
+      console.log('⚠️ [NFT TRANSFER] Could not verify token association status, but attempting transfer...')
+    }
+
+    // 4b. Verify NFT ownership and allowance status via mirror node
+    console.log('🔍 [NFT TRANSFER] Verifying NFT and allowance status...')
+    try {
+      const nftCheckResponse = await fetch(`${MIRROR_NODE_URL}/api/v1/tokens/${listing.nftAsset.tokenId}/nfts/${listing.nftAsset.serialNumber}`)
+      const nftData = await nftCheckResponse.json()
+      
+      console.log('📊 [NFT TRANSFER] NFT Mirror Node data:', {
+        owner: nftData.owner,
+        tokenId: listing.nftAsset.tokenId,
+        serialNumber: listing.nftAsset.serialNumber,
+        spender: nftData.spender
+      })
+
+      // Check if NFT is currently owned by seller
+      if (nftData.owner && nftData.owner !== sellerAccountId) {
+        console.warn('⚠️ [NFT TRANSFER] NFT owner mismatch - seller:', sellerAccountId, 'actual owner:', nftData.owner)
+      }
+
+      // Check if spender (operator) is approved
+      if (!nftData.spender || nftData.spender !== OPERATOR_ID) {
+        console.warn('⚠️ [NFT TRANSFER] Spender not set or mismatch - expected:', OPERATOR_ID, 'actual:', nftData.spender)
+      }
+    } catch (nftCheckError: any) {
+      console.log('ℹ️ [NFT TRANSFER] Could not verify NFT details from mirror node, proceeding:', nftCheckError.message)
+    }
+
+    // 4b. Transfer the NFT
+    console.log('📤 [NFT TRANSFER] Transferring NFT to buyer...', {
+      tokenId,
+      serialNumber,
+      seller,
+      buyer,
+      operatorId: OPERATOR_ID
+    })
+    
     const nftTransfer = new TransferTransaction()
       .addApprovedNftTransfer(tokenId, serialNumber, seller, buyer)
       .freezeWith(client)
 
     // Sign with operator key
+    console.log('🔐 [NFT TRANSFER] Signing transaction with operator key...')
     const signedTx = await nftTransfer.sign(operatorKey)
     
     // Execute transaction
+    console.log('⚡ [NFT TRANSFER] Executing transaction...')
     const txResponse = await signedTx.execute(client)
+    console.log('📜 [NFT TRANSFER] Transaction submitted, hash:', txResponse.transactionHash)
     
     // Get receipt to confirm success
-    const receipt = await txResponse.getReceipt(client)
+    let receipt
+    try {
+      receipt = await txResponse.getReceipt(client)
+    } catch (receiptError: any) {
+      console.error('❌ [NFT TRANSFER] Receipt error:', receiptError.message)
+      
+      // Check if it's an allowance error
+      if (receiptError.message?.includes('SPENDER_DOES_NOT_HAVE_ALLOWANCE')) {
+        // Reset the allowanceGranted flag so seller can re-grant it
+        await prisma.marketplaceListing.update({
+          where: { id: listingId },
+          data: { allowanceGranted: false }
+        }).catch(err => console.log('Could not reset allowanceGranted:', err.message))
+        
+        return NextResponse.json({
+          success: false,
+          error: 'NFT allowance granted to wrong operator',
+          code: 'ALLOWANCE_MISMATCH',
+          details: `The allowance was granted to a different operator account. Current operator: ${OPERATOR_ID}. Please ask the seller to revoke the old allowance and grant it again to the correct operator.`,
+          tokenId: listing.nftAsset.tokenId,
+          serialNumber: listing.nftAsset.serialNumber,
+          seller: sellerAccountId,
+          currentOperator: OPERATOR_ID,
+          requiresReauth: true,
+          action: 'REVOKE_AND_REGRANTING'
+        }, { status: 400 })
+      }
+      
+      throw receiptError
+    }
     
     console.log('✅ [NFT TRANSFER] NFT transferred successfully:', {
       transactionId: txResponse.transactionId.toString(),
