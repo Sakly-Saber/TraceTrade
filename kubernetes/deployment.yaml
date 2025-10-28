@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: trace-deployment
+  name: trace-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: trace-deployment
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: trace-deployment
+    spec:
+      containers:
+      - image: akreem/tracetrade-nextjs
+        name: tracetrade-nextjs
+        envFrom:
+        - configMapRef:
+            name: trace-config
+        resources: {}
+status: {}
