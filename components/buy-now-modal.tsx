@@ -231,11 +231,11 @@ export function BuyNowModal({ isOpen, onClose, listing, onSuccess }: BuyNowModal
       setTransactionId(combinedTxId)
       setStep('success')
 
-      // Call success callback after short delay
+      // Call success callback after longer delay to let user see the success screen
       if (onSuccess) {
         setTimeout(() => {
           onSuccess()
-        }, 2000)
+        }, 10000)
       }
 
     } catch (err: any) {
