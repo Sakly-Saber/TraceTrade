@@ -1,24 +1,46 @@
-FROM node:20-alpine
+# FROM node:20-alpine
 
+# WORKDIR /app
+
+# # Install pnpm
+# RUN npm install -g pnpm
+
+# # Copy package files and install dependencies
+# COPY package.json pnpm-lock.yaml ./
+# RUN pnpm install --frozen-lockfile
+
+# # Copy prisma schema
+# COPY prisma ./prisma
+
+# # Copy the rest of the application
+# COPY . .
+
+# # Development settings
+# ENV NODE_ENV=development
+# ENV PORT=3000
+# EXPOSE 3000
+
+# # Generate Prisma client and start dev server
+# CMD ["sh", "-c", "npx prisma generate && npx prisma db push && pnpm run dev"]
+
+
+
+FROM node:20-alpine
 WORKDIR /app
 
-# Install pnpm
 RUN npm install -g pnpm
 
-# Copy package files and install dependencies
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
 
-# Copy prisma schema
 COPY prisma ./prisma
+RUN pnpm prisma generate
 
-# Copy the rest of the application
 COPY . .
 
-# Development settings
 ENV NODE_ENV=development
 ENV PORT=3000
 EXPOSE 3000
 
-# Generate Prisma client and start dev server
-CMD ["sh", "-c", "npx prisma generate && npx prisma db push && pnpm run dev"]
+CMD ["sh", "-c", "pnpm prisma db push && pnpm run dev"]
