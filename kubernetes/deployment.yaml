@@ -18,10 +18,23 @@ spec:
         app: trace-deployment
     spec:
       containers:
-      - image: akreem/tracetrade-nextjs
+      - image: akreem/tracetrade-nextjs:v1.4
         name: tracetrade-nextjs
+        resources:
+          requests:
+            memory: "4096Mi"
+            cpu: "500m"
         envFrom:
         - configMapRef:
             name: trace-config
-        resources: {}
+        env:
+        - name: DATABASE_URL
+          value: "file:/prisma/dev.db"
+        volumeMounts:
+        - name: db-storage
+          mountPath: /prisma  # Mount the PVC at the prisma directory
+      volumes:
+      - name: db-storage
+        persistentVolumeClaim:
+          claimName: trace-db-pvc
 status: {}
