@@ -953,6 +953,50 @@ export const emergencyWalletReset = async (): Promise<void> => {
   }
 };
 
+export const getPrivateKeyFromHashPack = async (accountId: string): Promise<string> => {
+  console.log('🔑 Attempting to retrieve private key from HashPack for account:', accountId);
+  
+  if (!hashconnectInstance) {
+    throw new Error('HashConnect instance not initialized');
+  }
+
+  try {
+    // Try to get private key from HashConnect's account data
+    const signClient = (hashconnectInstance as any)?._signClient;
+    if (!signClient) {
+      throw new Error('SignClient not available');
+    }
+
+    // Get all sessions to find the account
+    const sessions = signClient.session.getAll();
+    if (!Array.isArray(sessions) || sessions.length === 0) {
+      throw new Error('No WalletConnect sessions found');
+    }
+
+    // Find the session that contains our account
+    const matchingSession = sessions.find((session: any) => {
+      const accountIds = session?.namespaces?.hedera?.accounts || [];
+      return accountIds.some((account: string) => account.includes(accountId));
+    });
+
+    if (!matchingSession) {
+      throw new Error(`No session found for account ${accountId}`);
+    }
+
+    // For security reasons, HashPack doesn't expose private keys directly
+    // Instead, we need to use the transaction signing capability
+    console.log('✅ Found matching session for account:', accountId);
+    console.log('⚠️ HashPack wallets do not expose private keys for security reasons');
+    console.log('💡 Minting should be done using transaction signing instead of direct private key access');
+    
+    throw new Error('HashPack does not expose private keys. Use transaction signing for minting operations.');
+    
+  } catch (error) {
+    console.error('❌ Failed to retrieve private key from HashPack:', error);
+    throw new Error(`Failed to get private key: ${error instanceof Error ? error.message : String(error)}`);
+  }
+};
+
 // Add to window for debugging
 if (typeof window !== 'undefined') {
   (window as any).emergencyWalletReset = emergencyWalletReset;
