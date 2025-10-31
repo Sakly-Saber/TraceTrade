@@ -4,8 +4,8 @@ metadata:
   name: trace-db-pvc
 spec:
   accessModes:
-    - ReadWriteMany  # Allows multiple pods to mount the volume
+    - ReadWriteOnce  # Change from ReadWriteMany to ReadWriteOnce
+  storageClassName: default
   resources:
     requests:
-      storage: 2Gi  # Increased storage for database growth
-  storageClassName: ""  # Use default storage class or specify your own
+      storage: 1Gi
