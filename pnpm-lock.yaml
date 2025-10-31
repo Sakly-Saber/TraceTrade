@@ -12,8 +12,8 @@ importers:
         specifier: ^2.10.0
         version: 2.10.0(@prisma/client@6.16.2(prisma@6.16.2(typescript@5.9.2))(typescript@5.9.2))
       '@hashgraph/sdk':
-        specifier: ^2.73.1
-        version: 2.73.2(bn.js@5.2.2)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@18.3.24)(react@18.3.1))
+        specifier: ^2.76.0
+        version: 2.76.0(bn.js@5.2.2)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@18.3.24)(react@18.3.1))
       '@hookform/resolvers':
         specifier: ^3.9.1
         version: 3.10.0(react-hook-form@7.63.0(react@18.3.1))
@@ -165,8 +165,8 @@ importers:
         specifier: ^1.3.1
         version: 1.5.1(next@15.5.0(@babel/core@7.28.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
       hashconnect:
-        specifier: ^3.0.13
-        version: 3.0.13(@types/react@18.3.24)(bn.js@5.2.2)(debug@4.4.1)(encoding@0.1.13)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@18.3.24)(react@18.3.1))(react@18.3.1)(typescript@5.9.2)(zod@3.25.76)
+        specifier: ^3.0.14
+        version: 3.0.14(@types/react@18.3.24)(bn.js@5.2.2)(debug@4.4.1)(encoding@0.1.13)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@18.3.24)(react@18.3.1))(react@18.3.1)(typescript@5.9.2)(zod@3.25.76)
       input-otp:
         specifier: 1.4.1
         version: 1.4.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -183,7 +183,7 @@ importers:
         specifier: latest
         version: 2.0.2
       next:
-        specifier: 15.5.0
+        specifier: ^15.5.0
         version: 15.5.0(@babel/core@7.28.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       next-auth:
         specifier: ^4.24.11
@@ -569,8 +569,8 @@ packages:
     engines: {node: '>=6'}
     hasBin: true
 
-  '@hashgraph/cryptography@1.11.0':
-    resolution: {integrity: sha512-DU3k2lfsqctfOe+HCwLeLe4K575gDCLIvNvzNORq2eHdeB4Qe4I/K9eLf9lAa4ZQzoMF1/kPxP3Fr0rhlz19nw==}
+  '@hashgraph/cryptography@1.14.0':
+    resolution: {integrity: sha512-vYeRpkdYHgO0y09BJJms4DQvjkSQuoOWnf1tCaOHfs4w2u1RttQUMgQbaZCM07+6YL3Pq8SPHbcEch5tbSdBNg==}
     engines: {node: '>=12.0.0'}
     peerDependencies:
       expo-crypto: '*'
@@ -615,8 +615,8 @@ packages:
     resolution: {integrity: sha512-y2DYFXpXZN0ywULaPycRmmryaUBzSDQ2+UAAYdE1jQr8NPcIL2gv8wB5GKBBQqz1HihRNXiyJgYSGoNSeq9qsg==}
     engines: {node: '>=10.0.0'}
 
-  '@hashgraph/proto@2.23.0':
-    resolution: {integrity: sha512-2IWei6P/cddhUmhDsvBEGx62/74siF4ZUIvuqBRq4JuVTEqcJaTH2T0RN5XL/IH6brwQUuEGlAs8gRMXa0bxaQ==}
+  '@hashgraph/proto@2.24.0':
+    resolution: {integrity: sha512-S1eE0CoQ17s40JuzKaKpMze8h0JoN13za5arCp3xaqbWVT4UEFq/O/zJud9cpZ31uYwpPe8gH65TPZ3pKd9ZWQ==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
       ansi-regex: 6.2.2
@@ -634,8 +634,8 @@ packages:
       expo:
         optional: true
 
-  '@hashgraph/sdk@2.73.2':
-    resolution: {integrity: sha512-Zdszj4N2pyVcFDtH61etajoVcnSCv/WliBtEf9V/Cih5KqF6rK1D1B9CXAQ3K6CKVx3jTCXunwgzLNO3WgN/LA==}
+  '@hashgraph/sdk@2.76.0':
+    resolution: {integrity: sha512-FrLDeiHCJak+ZBcRv5cFoX23LPHvn1xWvVIST+oheI0NGfMxOXrGLWICaP5FMWdOnLfkM1OklCQ93J+QBFP7+Q==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       bn.js: 5.2.1
@@ -3525,8 +3525,9 @@ packages:
   hash.js@1.1.7:
     resolution: {integrity: sha512-taOaskGt4z4SOANNseOviYDvjEJinIkRgmp7LbKP2YTTmVxWBl87s/uzK9r+44BclBSp2X7K1hqeNfz9JbBeXA==}
 
-  hashconnect@3.0.13:
-    resolution: {integrity: sha512-K4jL0gzSdQZFLA2krcyoLe0eq5waHzEI+MsQ8Kaa/XvwHMB2NwNIdaPx3MDWKx2Q87DTd2jhY8+VOesW1JIkwg==}
+  hashconnect@3.0.14:
+    resolution: {integrity: sha512-tsuxLJw6JHSrgxI2hUhA1TwzNW8r54JvYMmn+I+elWANJfmgASUK9lbkYj0jIe8aZgTBv6f72dvGawgYQZVRyw==}
+    deprecated: HashConnect is deprecated and will be shut down by 2026, please upgrade to WalletConnect - https://github.com/hashgraph/hedera-wallet-connect
 
   hashlru@2.3.0:
     resolution: {integrity: sha512-0cMsjjIC8I+D3M44pOQdsy0OHXGLVz6Z0beRuufhKa0KfaD2wGwAev6jILzXsd3/vpnNQJmWyZtIILqM1N+n5A==}
@@ -6181,7 +6182,7 @@ snapshots:
       protobufjs: 7.5.4
       yargs: 17.7.2
 
-  '@hashgraph/cryptography@1.11.0(react-native@0.81.4(@babel/core@7.28.4)(@types/react@18.3.24)(react@18.3.1))':
+  '@hashgraph/cryptography@1.14.0(react-native@0.81.4(@babel/core@7.28.4)(@types/react@18.3.24)(react@18.3.1))':
     dependencies:
       '@noble/curves': 1.8.1
       ansi-regex: 6.2.2
@@ -6233,9 +6234,9 @@ snapshots:
 
   '@hashgraph/hedera-wallet-connect@1.0.6(bn.js@5.2.2)(encoding@0.1.13)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@18.3.24)(react@18.3.1))(typescript@5.9.2)(zod@3.25.76)':
     dependencies:
-      '@hashgraph/sdk': 2.73.2(bn.js@5.2.2)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@18.3.24)(react@18.3.1))
+      '@hashgraph/sdk': 2.76.0(bn.js@5.2.2)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@18.3.24)(react@18.3.1))
       '@walletconnect/qrcode-modal': 1.8.0
-      '@walletconnect/types': 2.11.2
+      '@walletconnect/types': 2.21.9
       '@walletconnect/utils': 2.21.9(typescript@5.9.2)(zod@3.25.76)
       '@walletconnect/web3wallet': 1.16.1(encoding@0.1.13)(typescript@5.9.2)(zod@3.25.76)
     transitivePeerDependencies:
@@ -6273,7 +6274,7 @@ snapshots:
       long: 4.0.0
       protobufjs: 7.5.4
 
-  '@hashgraph/proto@2.23.0(ansi-regex@6.2.2)(ansi-styles@6.2.3)(debug@4.4.1)(protobufjs@7.5.4)(strip-ansi@7.1.2)':
+  '@hashgraph/proto@2.24.0(ansi-regex@6.2.2)(ansi-styles@6.2.3)(debug@4.4.1)(protobufjs@7.5.4)(strip-ansi@7.1.2)':
     dependencies:
       ansi-regex: 6.2.2
       ansi-styles: 6.2.3
@@ -6307,15 +6308,15 @@ snapshots:
       - expo-crypto
       - expo-random
 
-  '@hashgraph/sdk@2.73.2(bn.js@5.2.2)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@18.3.24)(react@18.3.1))':
+  '@hashgraph/sdk@2.76.0(bn.js@5.2.2)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@18.3.24)(react@18.3.1))':
     dependencies:
       '@ethersproject/abi': 5.8.0
       '@ethersproject/bignumber': 5.8.0
       '@ethersproject/bytes': 5.8.0
       '@ethersproject/rlp': 5.8.0
       '@grpc/grpc-js': 1.12.6
-      '@hashgraph/cryptography': 1.11.0(react-native@0.81.4(@babel/core@7.28.4)(@types/react@18.3.24)(react@18.3.1))
-      '@hashgraph/proto': 2.23.0(ansi-regex@6.2.2)(ansi-styles@6.2.3)(debug@4.4.1)(protobufjs@7.5.4)(strip-ansi@7.1.2)
+      '@hashgraph/cryptography': 1.14.0(react-native@0.81.4(@babel/core@7.28.4)(@types/react@18.3.24)(react@18.3.1))
+      '@hashgraph/proto': 2.24.0(ansi-regex@6.2.2)(ansi-styles@6.2.3)(debug@4.4.1)(protobufjs@7.5.4)(strip-ansi@7.1.2)
       ansi-regex: 6.2.2
       ansi-styles: 6.2.3
       bignumber.js: 9.1.1
@@ -8482,7 +8483,7 @@ snapshots:
 
   '@walletconnect/relay-api@1.0.11':
     dependencies:
-      '@walletconnect/jsonrpc-types': 1.0.3
+      '@walletconnect/jsonrpc-types': 1.0.4
 
   '@walletconnect/relay-auth@1.0.4':
     dependencies:
@@ -8491,7 +8492,7 @@ snapshots:
       '@walletconnect/safe-json': 1.0.2
       '@walletconnect/time': 1.0.2
       tslib: 1.14.1
-      uint8arrays: 3.1.0
+      uint8arrays: 3.1.1
 
   '@walletconnect/relay-auth@1.1.0':
     dependencies:
@@ -8839,7 +8840,7 @@ snapshots:
 
   '@walletconnect/window-metadata@1.0.0':
     dependencies:
-      '@walletconnect/window-getters': 1.0.0
+      '@walletconnect/window-getters': 1.0.1
 
   '@walletconnect/window-metadata@1.0.1':
     dependencies:
@@ -9968,7 +9969,7 @@ snapshots:
       inherits: 2.0.4
       minimalistic-assert: 1.0.1
 
-  hashconnect@3.0.13(@types/react@18.3.24)(bn.js@5.2.2)(debug@4.4.1)(encoding@0.1.13)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@18.3.24)(react@18.3.1))(react@18.3.1)(typescript@5.9.2)(zod@3.25.76):
+  hashconnect@3.0.14(@types/react@18.3.24)(bn.js@5.2.2)(debug@4.4.1)(encoding@0.1.13)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@18.3.24)(react@18.3.1))(react@18.3.1)(typescript@5.9.2)(zod@3.25.76):
     dependencies:
       '@hashgraph/cryptography': 1.4.7
       '@hashgraph/hedera-wallet-connect': 1.0.6(bn.js@5.2.2)(encoding@0.1.13)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@18.3.24)(react@18.3.1))(typescript@5.9.2)(zod@3.25.76)
