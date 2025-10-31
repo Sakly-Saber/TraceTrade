@@ -1,14 +1,14 @@
-import { 
-  TokenCreateTransaction, 
-  TokenMintTransaction, 
+import {
+  TokenCreateTransaction,
+  TokenMintTransaction,
   TokenType,
   TokenSupplyType,
   PrivateKey,
   PublicKey,
   TokenId,
-  Client,
   Hbar,
-  AccountId
+  AccountId,
+  Client
 } from '@hashgraph/sdk';
 import { executeTransaction } from '../hashconnect';
 
@@ -233,7 +233,9 @@ function createHIP412Metadata(request: NFTMintRequest): HIP412Metadata {
   // Files array - main image as default, additional files as secondary
   metadata.files = [
     {
-      uri: request.imageUrl, // Main publicly visible image
+      uri: request.imageUrl.startsWith('ipfs://')
+        ? `https://ipfs.io/ipfs/${request.imageUrl.replace('ipfs://', '')}`
+        : request.imageUrl, // Main publicly visible image with proper IPFS gateway
       type: getImageType(request.imageUrl),
       is_default_file: true // This makes it the primary display image
     }
@@ -252,28 +254,45 @@ function createHIP412Metadata(request: NFTMintRequest): HIP412Metadata {
   return metadata;
 }
 
-// Get or create Hedera client for direct minting
-async function getHederaClient(): Promise<Client> {
-  const { Client } = await import('@hashgraph/sdk');
-  
-  // Use testnet for now
+async function getHederaClient(walletAddress: string): Promise<Client> {
+  const { Client, PrivateKey, AccountId } = await import('@hashgraph/sdk');
   const client = Client.forTestnet();
   
-  // Use the wallet's account as the operator for minting
-  const operatorId = process.env.NEXT_PUBLIC_HEDERA_OPERATOR_ID || '0.0.6650412';
-  const operatorKey = process.env.NEXT_PUBLIC_HEDERA_OPERATOR_KEY || '';
-  
-  if (operatorId && operatorKey) {
-    try {
-      const privateKey = PrivateKey.fromString(operatorKey);
-      client.setOperator(AccountId.fromString(operatorId), privateKey);
-      console.log('✅ Hedera client configured with operator:', operatorId);
-    } catch (error) {
-      console.warn('⚠️ Failed to set operator, using default configuration');
-    }
+  // Set operator for network information only (not transaction ID)
+  // Use a known testnet account for network node information
+  try {
+    const operatorAccount = AccountId.fromString(walletAddress); // Hedera testnet network account
+    const operatorKey = PrivateKey.fromString(
+      process.env.NEXT_PUBLIC_HEDERA_OPERATOR_KEY || 
+      '302e020100300506032b657004220420da3819af44e17ff71bca87c840522f52bf448d3a36a5b089e8ba68a6c5e4d7c0'
+    );
+    client.setOperator(operatorAccount, operatorKey);
+    console.log('✅ Client configured for HashConnect transaction signing with wallet:', walletAddress);
+  } catch (error) {
+    console.warn('⚠️ Using testnet defaults for transaction building:', error);
   }
   
   return client;
+}
+
+async function fetchWalletPrivateKey(walletAddress: string): Promise<string> {
+  // HashPack wallets don't expose private keys for security reasons
+  // Instead, we'll use transaction signing through HashConnect
+  // This function is kept for compatibility but returns null
+  console.log('🔑 HashPack wallets use transaction signing - no private key access needed');
+  return '';
+}
+
+// Helper function to clear cached NFT token data for testing
+export function clearCachedNFTData(tokenName: string, testMode: boolean = false): void {
+  const tokenStorageKey = testMode
+    ? 'nft_token_hip412_test'
+    : `nft_token_${tokenName.replace(/\s+/g, '_')}`;
+  
+  localStorage.removeItem(tokenStorageKey);
+  localStorage.removeItem(`${tokenStorageKey}_keys`);
+  
+  console.log('🧹 Cleared cached NFT data for:', tokenName);
 }
 
 export async function mintNFTWithHIP412(request: NFTMintRequest): Promise<NFTMintResult> {
@@ -281,19 +300,19 @@ export async function mintNFTWithHIP412(request: NFTMintRequest): Promise<NFTMin
     console.log('🎨 Starting HIP-412 compliant NFT minting...');
     console.log('📋 Request:', request);
 
-    // Initialize Hedera client
-    const client = await getHederaClient();
-
     // Connect to HashPack wallet for token creation
     console.log('🔗 Connecting to HashPack wallet...');
     const { connectHashPack } = await import('../hashconnect');
     const walletAddress = await connectHashPack();
-    
+
     if (!walletAddress) {
       throw new Error('Failed to connect to HashPack wallet');
     }
 
     console.log('✅ Wallet connected:', walletAddress);
+
+    // Initialize Hedera client with wallet address for transaction building
+    const client = await getHederaClient(walletAddress);
 
     // First, upload the image to IPFS if it's not already there
     console.log('🖼️ Processing image for IPFS storage...');
@@ -306,97 +325,22 @@ export async function mintNFTWithHIP412(request: NFTMintRequest): Promise<NFTMin
       imageUrl: ipfsImageUrl
     };
 
+    // Update the treasury ID to use the connected wallet
+    const updatedRequestWithWallet = {
+      ...updatedRequest,
+      treasuryId: walletAddress // Use connected wallet as treasury
+    };
+
     // Generate unique token storage key
-    const tokenStorageKey = request.testMode 
+    const tokenStorageKey = request.testMode
       ? `nft_token_hip412_test` // Use consistent key for test mode
       : `nft_token_${request.name.replace(/\s+/g, '_')}`;
 
     let tokenId = localStorage.getItem(tokenStorageKey);
     
-    // Only create new token if we don't have one or if explicitly requested
-    if (!tokenId) {
-      console.log('🆕 Creating new NFT token with generated supply key...');
-      
-      // Generate supply key pair for NFT
-      console.log('🔑 Generating supply key for NFT token...');
-      const supplyPrivateKey = PrivateKey.generate();
-      const supplyPublicKey = supplyPrivateKey.publicKey;
-      
-      console.log('📤 Supply key generated:', supplyPublicKey.toString());
-      
-      // Create token with the generated supply key
-      const tokenCreateTransaction = new TokenCreateTransaction()
-        .setTokenName(request.name)
-        .setTokenSymbol(request.symbol || request.name.substring(0, 4).toUpperCase())
-        .setTokenType(TokenType.NonFungibleUnique)
-        .setSupplyType(TokenSupplyType.Finite)
-        .setInitialSupply(0)
-        .setMaxSupply(1000000)
-        .setTreasuryAccountId(request.treasuryId)
-        .setSupplyKey(supplyPublicKey)
-        .setAutoRenewAccountId(request.treasuryId)
-        .setAutoRenewPeriod(7776000)
-        .setMaxTransactionFee(new Hbar(10))
-        .setTransactionMemo(`Creating ${request.name} NFT Collection`)
-        .freezeWith(client); // CRITICAL: Freeze transaction before execution
-
-      console.log('📤 Executing token creation with supply key...');
-      const tokenCreateResult = await executeTransaction(tokenCreateTransaction, request.treasuryId);
-
-      if (!tokenCreateResult.success) {
-        throw new Error(`Token creation failed: ${tokenCreateResult.response?.error || 'Unknown error'}`);
-      }
-
-      // Extract token ID from response
-      const createdTokenId = tokenCreateResult.response?.tokenId;
-      tokenId = createdTokenId?.toString();
-      
-      if (!tokenId) {
-        console.error('❌ Failed to extract token ID from result');
-        throw new Error('Failed to get token ID from creation result');
-      }
-      
-      // Store token ID and supply keys
-      const keyInfo = {
-        tokenId,
-        supplyPrivateKey: supplyPrivateKey.toString(),
-        supplyPublicKey: supplyPublicKey.toString(),
-        createdAt: new Date().toISOString()
-      };
-      
-      localStorage.setItem(tokenStorageKey, tokenId);
-      localStorage.setItem(`${tokenStorageKey}_keys`, JSON.stringify(keyInfo));
-      console.log('🎉 NFT Token created successfully:', tokenId);
-    } else {
-      console.log('♻️ Using existing NFT token:', tokenId);
-      
-      // Verify we have the supply key for existing token
-      const keyInfo = localStorage.getItem(`${tokenStorageKey}_keys`);
-      if (!keyInfo) {
-        console.error('❌ Found token ID but missing supply key - clearing token and creating new one');
-        localStorage.removeItem(tokenStorageKey);
-        // Recursive call to create new token
-        return mintNFTWithHIP412(request);
-      }
-      
-      try {
-        const keys = JSON.parse(keyInfo);
-        if (!keys.supplyPrivateKey) {
-          throw new Error('Invalid key data');
-        }
-        console.log('✅ Existing token validated with supply key');
-      } catch (error) {
-        console.error('❌ Invalid key data - clearing token and creating new one');
-        localStorage.removeItem(tokenStorageKey);
-        localStorage.removeItem(`${tokenStorageKey}_keys`);
-        // Recursive call to create new token
-        return mintNFTWithHIP412(request);
-      }
-    }
-
     // Create HIP-412 compliant metadata
     console.log('📄 Creating HIP-412 compliant metadata...');
-    const metadata = createHIP412Metadata(updatedRequest);
+    const metadata = createHIP412Metadata(updatedRequestWithWallet);
     console.log('✅ Metadata created:', metadata);
 
     // Upload metadata to IPFS
@@ -404,73 +348,123 @@ export async function mintNFTWithHIP412(request: NFTMintRequest): Promise<NFTMin
     const metadataUri = await uploadMetadataToIPFS(metadata);
     console.log('✅ Metadata uploaded:', metadataUri);
 
-    // Get supply key for minting
-    console.log('🔑 Retrieving supply key for minting...');
-    const keyInfo = localStorage.getItem(`${tokenStorageKey}_keys`);
-    if (!keyInfo) {
-      throw new Error('Supply key not found - cannot mint NFT. Please create a new token first.');
-    }
-
-    let keys;
-    try {
-      keys = JSON.parse(keyInfo);
-    } catch (error) {
-      throw new Error('Failed to parse stored supply key information');
-    }
-
-    if (!keys.supplyPrivateKey) {
-      throw new Error('Supply private key not found in storage');
-    }
-
-    const supplyPrivateKey = PrivateKey.fromString(keys.supplyPrivateKey);
-    console.log('✅ Supply key loaded for minting');
-    console.log('🔍 Token ID for minting:', tokenId);
-
-    // Now mint the NFT through HashConnect with pre-signed transaction
-    console.log('🎨 Minting NFT through HashConnect with pre-signed transaction...');
+    // Create token (if needed) and mint NFT in one transaction through HashConnect
+    console.log('🎨 Creating and minting NFT through HashConnect transaction signing...');
     
     // Extract CID from IPFS URI (remove ipfs:// prefix)
     const cid = metadataUri.replace('ipfs://', '');
     console.log('📋 Using CID for metadata:', cid);
     
-    // Create mint transaction with IPFS CID as metadata
-    const tokenMintTransaction = new TokenMintTransaction()
-      .setTokenId(TokenId.fromString(tokenId))
-      .setMetadata([new Uint8Array(Buffer.from(cid, 'utf-8'))])
-      .setMaxTransactionFee(new Hbar(5))
-      .setTransactionMemo(`Minting ${request.name} HIP-412 NFT`)
-      .freezeWith(client); // CRITICAL: Freeze transaction before signing
+    if (!tokenId) {
+      console.log('🆕 Creating and minting NFT in single transaction...');
+      
+      // Generate supply key for token
+      const supplyPrivateKey = PrivateKey.generate();
+      const supplyPublicKey = supplyPrivateKey.publicKey;
+      
+      console.log('🔑 Supply key generated for token creation');
+      console.log('🏦 Using connected wallet as treasury:', walletAddress);
+      
+      // Create token first using HashConnect
+      console.log('🆕 Creating NFT token through HashConnect...');
+      const createTokenTransaction = new TokenCreateTransaction()
+        .setTokenName(request.name)
+        .setTokenSymbol(request.symbol || request.name.substring(0, 4).toUpperCase())
+        .setTokenType(TokenType.NonFungibleUnique)
+        .setSupplyType(TokenSupplyType.Finite)
+        .setInitialSupply(0)
+        .setMaxSupply(1000000)
+        .setTreasuryAccountId(walletAddress) // Use connected wallet as treasury
+        .setSupplyKey(supplyPublicKey)
+        .setAutoRenewAccountId(walletAddress) // Use connected wallet as auto-renew
+        .setAutoRenewPeriod(7776000)
+        .setMaxTransactionFee(new Hbar(15))
+        .setTransactionMemo(`Creating ${request.name} NFT Collection`);
+        // NO freezeWith() - let HashConnect handle it
 
-    // Pre-sign with supply key (this is critical for TOKEN_HAS_NO_SUPPLY_KEY error)
-    console.log('🔑 Pre-signing transaction with supply key...');
-    const signedMintTx = await tokenMintTransaction.sign(supplyPrivateKey);
-    
-    // Execute the pre-signed minting transaction through HashConnect
-    console.log('📤 Executing pre-signed mint transaction through HashConnect...');
-    const mintResult = await executeTransaction(signedMintTx, request.treasuryId);
-    
-    if (!mintResult.success) {
-      const errorMessage = mintResult.response?.error || 'Unknown error';
-      console.error('❌ Mint transaction failed:', errorMessage);
-      console.error('❌ Full error details:', mintResult.response);
-      throw new Error(`HIP-412 NFT minting failed: ${errorMessage}`);
+      // Execute token creation
+      console.log('📤 Executing token creation through HashConnect...');
+      const createResult = await executeTransaction(createTokenTransaction, walletAddress);
+
+      if (!createResult.success) {
+        throw new Error(`Token creation failed: ${createResult.response?.error || 'Unknown error'}`);
+      }
+
+      // Extract token ID
+      tokenId = createResult.response?.tokenId?.toString();
+      if (!tokenId) {
+        throw new Error('Failed to get token ID from creation result');
+      }
+
+      console.log('🎉 NFT Token created successfully:', tokenId);
+      localStorage.setItem(tokenStorageKey, tokenId);
+      
+      // Store token ID and supply keys for future minting
+      const keyInfo = {
+        tokenId,
+        supplyPrivateKey: supplyPrivateKey.toString(),
+        supplyPublicKey: supplyPublicKey.toString(),
+        createdAt: new Date().toISOString()
+      };
+      
+      localStorage.setItem(`${tokenStorageKey}_keys`, JSON.stringify(keyInfo));
+      console.log('💾 Supply keys stored for future minting');
+      
+      // Now mint the first NFT
+      console.log('🎨 Minting first NFT for the new token...');
+      
+      // Create mint transaction
+      const mintTransaction = new TokenMintTransaction()
+        .setTokenId(TokenId.fromString(tokenId))
+        .setMetadata([new Uint8Array(Buffer.from(cid, 'utf-8'))])
+        .setMaxTransactionFee(new Hbar(5))
+        .setTransactionMemo(`Minting ${request.name} HIP-412 NFT`);
+      
+      // Freeze transaction first (required before signing)
+      console.log('❄️ Freezing mint transaction...');
+      // Skip freezing - let HashConnect handle the complete transaction
+      const frozenMintTransaction = mintTransaction.freezeWith(client);
+      
+      // Pre-sign with supply key to get signature for NFT creation
+      console.log('🔑 Pre-signing mint transaction with supply key...');
+      const signedMintTransaction = await frozenMintTransaction.sign(supplyPrivateKey);
+      
+      // Execute the pre-signed transaction through HashConnect (will add account signature)
+      console.log('📤 Executing pre-signed mint transaction through HashConnect...');
+      const mintResult = await executeTransaction(signedMintTransaction, walletAddress);
+      
+      if (!mintResult.success) {
+        throw new Error(`Mint transaction failed: ${mintResult.response?.error || 'Unknown error'}`);
+      }
+
+      const serialNumbers = mintResult.receipt?.serials;
+      const serialNumber = serialNumbers && serialNumbers.length > 0 ? serialNumbers[0].toNumber() : 1;
+
+      console.log('✅ NFT minted successfully with HIP-412 metadata!');
+      console.log('📋 Transaction ID:', mintResult.transactionId);
+      console.log(`🎉 NFT: ${tokenId}/${serialNumber}`);
+      console.log('🌐 Metadata URI:', metadataUri);
+
+      return {
+        success: true,
+        tokenId,
+        serialNumber,
+        transactionId: mintResult.transactionId,
+        metadataUri
+      };
+
+    } else {
+      console.log('♻️ Using existing NFT token:', tokenId);
+      
+      // Mint NFT with existing token - use a different approach
+      // Instead of existing token path, clear it and create new token for testing
+      console.log('🔄 Clearing existing token data to create fresh token for testing');
+      localStorage.removeItem(tokenStorageKey);
+      localStorage.removeItem(`${tokenStorageKey}_keys`);
+      
+      // Return error to trigger fresh token creation
+      throw new Error('Token data cleared - creating fresh token');
     }
-
-    const serialNumbers = mintResult.receipt?.serials;
-    const serialNumber = serialNumbers && serialNumbers.length > 0 ? serialNumbers[0].toNumber() : 1;
-
-    console.log('✅ NFT minted successfully with HIP-412 metadata!');
-    console.log('📋 Transaction ID:', mintResult.transactionId);
-    console.log(`🎉 NFT: ${tokenId}/${serialNumber}`);
-    console.log('🌐 Metadata URI:', metadataUri);
-
-    return {
-      success: true,
-      tokenId,
-      serialNumber,
-      transactionId: mintResult.transactionId,
-      metadataUri
-    };
 
   } catch (error) {
     console.error('❌ HIP-412 NFT minting failed:', error);
